@@ -1,0 +1,35 @@
+name: Docker
+
+on:
+  pull_request:
+    branches: [ "main" ]
+    types: [closed]
+
+jobs:
+  delete:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout api repository
+        uses: actions/checkout@v3
+        with:
+          repository: nizar-i/example-argocd
+          token:  ${{ secrets.PAT_TOKEN }}
+
+      - name: Setup yq
+        uses: dcarbone/install-yq-action@v1.1.1
+
+      - name: update api image tag
+        run: >-
+          TAG=$(echo "${{needs.build.outputs.tags}}" | cut -d':' -f2)
+          yq -i
+          'del(.spec.generators[0].list.elements[] | select(.image-tag == env(TAG)))'
+          argocd/api.yaml
+
+      - name: delete
+        run: |-
+          if git status -s | grep "api.yaml"; then
+            git config --global user.name "${GITHUB_ACTOR}"
+            git config --global user.email "${{ secrets.AUTHOR_EMAIL }}"
+            git commit -a -m "delete api app"
+            git push
+          fi
