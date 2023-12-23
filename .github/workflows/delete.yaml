@@ -21,7 +21,6 @@ jobs:
       - name: update api image tag
         run: >-
           TAG=pr-${{ github.event.number }}
-          echo $TAG
           yq -i
           'del(.spec.generators[0].list.elements[] | select(.image-tag == env(TAG)))'
           argocd/api.yaml
