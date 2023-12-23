@@ -3,6 +3,7 @@ name: Docker
 on:
   pull_request:
     branches: [ "main" ]
+    types: [opened, synchronize, reopened]
 
 env:
   # Use docker.io for Docker Hub if empty
@@ -11,6 +12,8 @@ env:
 
 jobs:
   build:
+    outputs:
+      tags: ${{ steps.meta.outputs.tags }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -41,7 +44,37 @@ jobs:
         uses: docker/build-push-action@0565240e2d4ab88bba5387d719585280857ece09 # v5.0.0
         with:
           context: .
+          push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout api repository
+        uses: actions/checkout@v3
+        with:
+          repository: nizar-i/example-argocd
+          token:  ${{ secrets.PAT_TOKEN }}
+
+      - name: Setup yq
+        uses: dcarbone/install-yq-action@v1.1.1
+
+      - name: update api image tag
+        run: >-
+          TAG=$(echo "${{needs.build.outputs.tags}}" | cut -d':' -f2)
+          yq -i
+          'with( .spec.generators[0].list.elements; select(all_c(.image-tag != env(TAG) )) | . += [{"image-tag": env(TAG)}])'
+          argocd/api.yaml
+
+      - name: deploy
+        run: |-
+          if git status -s | grep "api.yaml"; then
+            git config --global user.name "${GITHUB_ACTOR}"
+            git config --global user.email "${{ secrets.AUTHOR_EMAIL }}"
+            git commit -a -m "update api app"
+            git push
+          fi
