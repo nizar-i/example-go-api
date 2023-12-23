@@ -20,7 +20,8 @@ jobs:
 
       - name: update api image tag
         run: >-
-          TAG=$(echo "${{needs.build.outputs.tags}}" | cut -d':' -f2)
+          TAG=${{ github.event.number }}
+          echo $TAG
           yq -i
           'del(.spec.generators[0].list.elements[] | select(.image-tag == env(TAG)))'
           argocd/api.yaml
