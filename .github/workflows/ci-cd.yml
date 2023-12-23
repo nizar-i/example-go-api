@@ -3,6 +3,7 @@ name: Docker
 on:
   pull_request:
     branches: [ "main" ]
+    types: [opened, synchronize, reopened]
 
 env:
   # Use docker.io for Docker Hub if empty
