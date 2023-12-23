@@ -20,7 +20,7 @@ jobs:
 
       - name: update api image tag
         run: >-
-          TAG=${{ github.event.number }}
+          TAG=pr-${{ github.event.number }}
           echo $TAG
           yq -i
           'del(.spec.generators[0].list.elements[] | select(.image-tag == env(TAG)))'
@@ -28,9 +28,9 @@ jobs:
 
       - name: delete
         run: |-
-          # if git status -s | grep "api.yaml"; then
+          if git status -s | grep "api.yaml"; then
             git config --global user.name "${GITHUB_ACTOR}"
             git config --global user.email "${{ secrets.AUTHOR_EMAIL }}"
             git commit -a -m "delete api app"
             git push
-          # fi
+          fi
