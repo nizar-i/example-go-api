@@ -11,6 +11,8 @@ env:
 
 jobs:
   build:
+    outputs:
+      tags: ${{ steps.meta.outputs.tags }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -48,6 +50,7 @@ jobs:
           cache-to: type=gha,mode=max
 
   deploy:
+    needs: build
     runs-on: ubuntu-latest
     steps:
       - name: Checkout api repository
@@ -58,9 +61,11 @@ jobs:
       - name: Setup yq
         uses: dcarbone/install-yq-action@v1.1.1
 
-      - name: Check yq
-        run: |
-          which yq
-          yq --version
-          ls
-          pwd
+      - name: update api image tag
+        run: >-
+          yq -i
+          'with( .spec.generators[0].list.elements; select(all_c(.image-tag != "${{needs.build.outputs.tags}}")) | . += [{"image-tag": "${{needs.build.outputs.tags}}"}])'
+          argocd/api.yaml
+
+      - name: deploy
+        run: cat argocd/api.yaml
